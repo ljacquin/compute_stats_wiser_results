@@ -1,0 +1,132 @@
+Pine D trait :
+
+Mixed model used for blups ;
+
+> lmer_model_
+Linear mixed model fit by REML ['lmerMod']
+Formula: D_spats_adj_pheno ~ 1 + Envir + X.PC1 + (1 | Genotype)
+   Data: df_
+REML criterion at convergence: 5960.698
+Random effects:
+ Groups   Name        Std.Dev.
+ Genotype (Intercept) 2.035   
+ Residual             4.412   
+Number of obs: 1019, groups:  Genotype, 208
+Fixed Effects:
+   (Intercept)  EnvirGS_2015_B  EnvirGS_2015_C  EnvirGS_2015_D  EnvirGS_2016_A  EnvirGS_2016_B  EnvirGS_2016_C  EnvirGS_2016_D  EnvirGS_2017_A  EnvirGS_2017_B  
+      26.82739        -5.98798         2.76767        -7.46736        -9.65618         6.66488        -6.77648        -2.73387        -3.82183        -3.08281  
+EnvirGS_2017_C  EnvirGS_2017_D  EnvirGS_2018_A  EnvirGS_2018_B  EnvirGS_2018_C  EnvirGS_2018_D  EnvirGS_2019_A  EnvirGS_2019_B  EnvirGS_2019_C  EnvirGS_2019_D  
+       6.52453         4.18109        -9.34727        -8.41684        -8.19682       -10.77123       -14.89495        -7.13804        -2.09536        -4.53577  
+EnvirYA_2015_A  EnvirYA_2015_B  EnvirYA_2015_C  EnvirYA_2015_D  EnvirYA_2016_A  EnvirYA_2016_B  EnvirYA_2016_C  EnvirYA_2016_D  EnvirYA_2017_A  EnvirYA_2017_B  
+     -14.60547       -15.44943       -11.08884        -3.38356        -6.04153       -11.23942        -8.80573        -7.52353        -8.95334       -14.40025  
+EnvirYA_2017_C  EnvirYA_2017_D  EnvirYA_2018_A  EnvirYA_2018_B  EnvirYA_2018_C  EnvirYA_2018_D  EnvirYA_2019_A  EnvirYA_2019_B  EnvirYA_2019_C  EnvirYA_2019_D  
+      -0.86845        -1.62037       -22.08618        -5.88960       -14.13648       -12.48922        -8.56531       -15.15794        -9.14203        -5.68049  
+         X.PC1  
+       0.05563 
+
+$optinfo$message
+[1] "NLOPT_XTOL_REACHED: Optimization stopped because xtol_rel or xtol_abs (above) was reached."
+
+# compute Cramer's V index and variance inflation factor (VIF) to evaluate collinearity
+cont_tab <- table(df_$Genotype, df_$Envir)
+cramer_v <- assocstats(cont_tab)$cramer
+print(paste0(
+ "Cramer' V for ", str_replace(Y, "_spats_adj_pheno", ": "),
+ round(cramer_v, 2)
+)) # strong association and colinear if v > 0.3
+[1] "Cramer' V for D: 0.43"
+
+Linear regression with fixed effects for LS-Means ;
+
+lm_model <- lm(formula(paste0(Y, "~ 1 + Genotype + Envir")), data = df_)
+vif_values <- vif(lm_model)
+Erreur dans vif.default(lm_model) : 
+  there are aliased coefficients in the model
+
+Pine H trait :
+
+Mixed model used for blups ;
+
+> lmer_model_
+Linear mixed model fit by REML ['lmerMod']
+Formula: H_spats_adj_pheno ~ 1 + Envir + X.PC1 + X.PC2 + X.PC3 + X.PC4 +      X.PC5 + X.PC6 + X.PC7 + X.PC8 + X.PC9 + X.PC10 + (1 | Genotype)
+   Data: df_
+REML criterion at convergence: -208.6795
+Random effects:
+ Groups   Name        Std.Dev. 
+ Genotype (Intercept) 3.030e+02
+ Residual             1.164e-04
+Number of obs: 414, groups:  Genotype, 207
+Fixed Effects:
+   (Intercept)  EnvirGS_2020_B  EnvirGS_2020_C  EnvirGS_2020_D  EnvirYA_2020_A  EnvirYA_2020_B  EnvirYA_2020_C  EnvirYA_2020_D           X.PC1           X.PC2  
+     1086.0495        537.0690        608.9932        744.1152       1514.5353       1341.9941       1704.5224       2395.2100          1.0494          2.0942  
+         X.PC3           X.PC4           X.PC5           X.PC6           X.PC7           X.PC8           X.PC9          X.PC10  
+       10.5999          1.0895         -7.7688         -1.5373         10.3673          1.0382          0.3067         14.6424  
+optimizer (nloptwrap) convergence code: 0 (OK) ; 0 optimizer warnings; 2 lme4 warnings 
+
+> attributes(lmer_model_)$optinfo$conv$lme4$messages[[2]]
+[1] "Model is nearly unidentifiable: very large eigenvalue\n - Rescale variables?"
+
+# compute Cramer's V index and variance inflation factor (VIF) to evaluate collinearity
+cont_tab <- table(df_$Genotype, df_$Envir)
+cramer_v <- assocstats(cont_tab)$cramer
+print(paste0(
+ "Cramer' V for ", str_replace(Y, "_spats_adj_pheno", ": "),
+ round(cramer_v, 2)
+)) # strong association and colinear if v > 0.3
+[1] "Cramer' V for H: 1"
+
+Linear regression with fixed effects for LS-Means ;
+
+lm_model <- lm(formula(paste0(Y, "~ 1 + Genotype + Envir")), data = df_)
+vif_values <- vif(lm_model)
+
+Erreur dans vif.default(lm_model) : 
+there are aliased coefficients in the model 
+  
+Pine I trait :
+
+Mixed model used for blups ;
+
+> lmer_model_
+Linear mixed model fit by REML ['lmerMod']
+Formula: I_spats_adj_pheno ~ 1 + Envir + X.PC1 + X.PC2 + X.PC3 + X.PC4 +      X.PC5 + X.PC6 + X.PC7 + X.PC8 + X.PC9 + X.PC10 + (1 | Genotype)
+   Data: df_
+REML criterion at convergence: 12790.73
+Random effects:
+ Groups   Name        Std.Dev.
+ Genotype (Intercept) 60.47   
+ Residual             67.60   
+Number of obs: 1139, groups:  Genotype, 208
+Fixed Effects:
+   (Intercept)  EnvirGS_2015_B  EnvirGS_2015_C  EnvirGS_2015_D  EnvirGS_2016_A  EnvirGS_2016_B  EnvirGS_2016_C  EnvirGS_2016_D  EnvirGS_2017_A  EnvirGS_2017_B  
+     199.00973      -120.34651      -114.68497       -26.06801       -50.03493       -52.70261       -68.27700        25.53103        84.08482      -160.17174  
+EnvirGS_2017_C  EnvirGS_2017_D  EnvirGS_2018_A  EnvirGS_2018_B  EnvirGS_2018_C  EnvirGS_2018_D  EnvirGS_2019_A  EnvirGS_2019_B  EnvirGS_2019_C  EnvirGS_2019_D  
+      32.23987        23.34670      -151.80267         8.46402        48.81330        85.27191       -17.82741        33.24771        67.16361        11.52502  
+EnvirGS_2020_A  EnvirGS_2020_B  EnvirGS_2020_C  EnvirGS_2020_D  EnvirYA_2016_A  EnvirYA_2016_B  EnvirYA_2016_C  EnvirYA_2016_D  EnvirYA_2017_A  EnvirYA_2017_B  
+    -208.49452       134.49061       111.27977       -95.03055       -41.93504       -11.06104        89.11523       155.29313       126.97005         8.24811  
+EnvirYA_2017_C  EnvirYA_2017_D  EnvirYA_2018_A  EnvirYA_2018_B  EnvirYA_2018_C  EnvirYA_2018_D  EnvirYA_2019_A  EnvirYA_2019_B  EnvirYA_2019_C  EnvirYA_2019_D  
+     142.16654       249.34191       206.02339        89.84529       127.01094       253.52679       252.73323       129.18480       358.01287       420.36134  
+EnvirYA_2020_A  EnvirYA_2020_B  EnvirYA_2020_C  EnvirYA_2020_D           X.PC1           X.PC2           X.PC3           X.PC4           X.PC5           X.PC6  
+     212.03576       293.89880       153.09016       319.65987        -0.02259         0.78821         1.57324         0.97645        -1.14333        -0.39240  
+         X.PC7           X.PC8           X.PC9          X.PC10  
+       1.64265         0.64613        -0.03338         2.27889  
+	   
+> attributes(lmer_model_)$optinfo$message
+[1] "NLOPT_XTOL_REACHED: Optimization stopped because xtol_rel or xtol_abs (above) was reached."
+
+Linear regression with fixed effects for LS-Means ;
+
+# compute Cramer's V index and variance inflation factor (VIF) to evaluate collinearity
+       cont_tab <- table(df_$Genotype, df_$Envir)
+       cramer_v <- assocstats(cont_tab)$cramer
+       print(paste0(
+         "Cramer' V for ", str_replace(Y, "_spats_adj_pheno", ": "),
+         round(cramer_v, 2)
+       )) # strong association and colinear if v > 0.3
+[1] "Cramer' V for I: 0.41"
+ 
+lm_model <- lm(formula(paste0(Y, "~ 1 + Genotype + Envir")), data = df_)
+vif_values <- vif(lm_model)
+Erreur dans vif.default(lm_model) : 
+  there are aliased coefficients in the model
