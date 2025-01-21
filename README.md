@@ -1,4 +1,4 @@
-[<img src="img/gblup_pa_wiser_ls_means_blup.png" width="1400"/>]()
+[<img src="img/wiser_stats.png" width="1400"/>]()
 
 # compute statistics for WISER publication
 
