@@ -1,0 +1,119 @@
+Le chargement a nécessité le package : usethis
+
+Attachement du package : ‘Matrix’
+
+Les objets suivants sont masqués depuis ‘package:tidyr’:
+
+    expand, pack, unpack
+
+corrplot 0.94 loaded
+
+Attachement du package : ‘plotly’
+
+L'objet suivant est masqué depuis ‘package:ggplot2’:
+
+    last_plot
+
+L'objet suivant est masqué depuis ‘package:MASS’:
+
+    select
+
+L'objet suivant est masqué depuis ‘package:stats’:
+
+    filter
+
+L'objet suivant est masqué depuis ‘package:graphics’:
+
+    layout
+
+
+Attachement du package : ‘dplyr’
+
+Les objets suivants sont masqués depuis ‘package:data.table’:
+
+    between, first, last
+
+L'objet suivant est masqué depuis ‘package:MASS’:
+
+    select
+
+Les objets suivants sont masqués depuis ‘package:stats’:
+
+    filter, lag
+
+Les objets suivants sont masqués depuis ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Le chargement a nécessité le package : ade4
+
+   /// adegenet 2.1.10 is loaded ////////////
+
+   > overview: '?adegenet'
+   > tutorials/doc/questions: 'adegenetWeb()' 
+   > bug reports/feature requests: adegenetIssues()
+
+
+
+Attachement du package : ‘hierfstat’
+
+Les objets suivants sont masqués depuis ‘package:adegenet’:
+
+    Hs, read.fstat
+
+[1] "Rice"
+[1] "FL"
+[1] "PH"
+[1] "YLD"
+[1] "ZN"
+[1] "Maize"
+[1] "anthesis"
+[1] "anthesis.silking.interval"
+[1] "ear.height"
+[1] "grain.number"
+[1] "grain.weight"
+[1] "grain.yield"
+[1] "plant.height"
+[1] "silking"
+[1] "tassel.height"
+[1] "Apple"
+[1] "Color_over"
+[1] "Flowering_begin"
+[1] "Flowering_end"
+[1] "Flowering_full"
+[1] "Flowering_intensity"
+[1] "Fruit_number"
+[1] "Fruit_weight"
+[1] "Fruit_weight_single"
+[1] "Harvest_date"
+[1] "Powdery_mildew"
+[1] "Russet_freq_all"
+[1] "Scab"
+[1] "Trunk_diameter"
+[1] "Trunk_increment"
+[1] "Pine"
+[1] "D"
+[1] "H"
+[1] "I"
+[1] "T4"
+[1] "T5"
+[1] "T6"
+[1] 0.2166667
+  Species Genotype_entropy_median Genotype_entropy_iqr Fst_value_median
+1   Apple                   8.929                0.042            0.056
+2   Maize                   7.932                0.001            0.026
+3    Pine                   7.695                0.005            0.035
+4    Rice                   8.365                0.000            0.010
+  Fst_value_iqr
+1         0.006
+2         0.002
+3         0.001
+4         0.000
+null device 
+          1 
+null device 
+          1 
+   GBLUP_median_PA_wiser GBLUP_median_PA_ls_means    GBLUP_median_PA_blups 
+              0.08636364               0.11818182               0.13333333 
+   GBLUP_median_h2_wiser GBLUP_median_h2_ls_means    GBLUP_median_h2_blups 
+              0.05636364               0.09333333               0.09666667 

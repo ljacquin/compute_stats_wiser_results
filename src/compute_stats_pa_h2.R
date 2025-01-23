@@ -28,7 +28,7 @@ library(future.apply)
 library(adegenet)
 library(hierfstat)
 library(parallel)
-computation_mode <- "local"
+computation_mode <- "cluster"
 if (!identical(computation_mode, "cluster")) {
   library(rstudioapi)
   setwd(dirname(getActiveDocumentContext()$path))
@@ -752,7 +752,7 @@ df_pa_h2_diff_and_stats_trait_ <- df_pa_h2_diff_and_stats[
 corr_matrix_spec_ <- cor(df_pa_h2_diff_and_stats_trait_)
 
 # create a pdf file with adjusted dimensions
-pdf(paste0(result_dir_path, paste0("diff_median_pa_corr_plot_", spec_, ".pdf")),
+pdf(paste0("../results/resdiff_median_pa_corr_plot_", spec_, ".pdf"),
   width = 10, height = 10
 ) # dimensions in inches
 
@@ -775,17 +775,11 @@ dev.off()
 # save reformatted pa and h2 results
 fwrite(
   df_pa_median_iqr_all_species_traits,
-  paste0(
-    result_dir_path,
-    "gblup_pa_median_iqr_all_species_traits_and_methods.csv"
-  )
+  "../results/gblup_pa_median_iqr_all_species_traits_and_methods.csv"
 )
 fwrite(
   df_h2_result_all_species_traits,
-  paste0(
-    result_dir_path,
-    "gblup_h2_median_iqr_all_species_traits_and_methods.csv"
-  )
+  "../results/gblup_h2_median_iqr_all_species_traits_and_methods.csv"
 )
 
 # df_pa_median_iqr_all_species_traits <- as.data.frame(fread(
