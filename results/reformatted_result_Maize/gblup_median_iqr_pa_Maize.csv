@@ -1,0 +1,10 @@
+Species,Trait,GBLUP_PA_wiser,GBLUP_PA_ls_means,GBLUP_PA_blups
+Maize,anthesis,0.74 (0.07),0.69 (0.07),0.57 (0.10)
+Maize,anthesis.silking.interval,0.66 (0.07),0.37 (0.18),0.22 (0.18)
+Maize,ear.height,0.67 (0.07),0.24 (0.15),0.24 (0.13)
+Maize,grain.number,0.68 (0.09),0.53 (0.14),0.34 (0.16)
+Maize,grain.weight,0.61 (0.10),0.54 (0.13),0.22 (0.16)
+Maize,grain.yield,0.77 (0.08),0.66 (0.10),0.48 (0.14)
+Maize,plant.height,0.67 (0.08),0.22 (0.15),0.22 (0.14)
+Maize,silking,0.70 (0.08),0.67 (0.06),0.55 (0.08)
+Maize,tassel.height,0.67 (0.07),0.30 (0.14),0.18 (0.15)
