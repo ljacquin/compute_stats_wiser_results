@@ -106,7 +106,7 @@ Les objets suivants sont masqués depuis ‘package:adegenet’:
 4    Rice                   8.365                0.000            0.010
   Fst_value_iqr
 1         0.006
-2         0.002
+2         0.003
 3         0.001
 4         0.000
 null device 
@@ -114,6 +114,6 @@ null device
 null device 
           1 
    GBLUP_median_PA_wiser GBLUP_median_PA_ls_means    GBLUP_median_PA_blups 
-              0.08636364               0.11818182               0.13333333 
+              0.08636364               0.11818182               0.13848485 
    GBLUP_median_h2_wiser GBLUP_median_h2_ls_means    GBLUP_median_h2_blups 
-              0.05636364               0.09333333               0.09666667 
+              0.05636364               0.09333333               0.08424242 

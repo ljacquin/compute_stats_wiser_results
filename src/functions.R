@@ -309,3 +309,36 @@ split_matrix <- function(df_, chunk_size = 1000) {
   })
   return(sub_matrices)
 }
+
+# function to split a big matrix into sampled sub-matrices without replacement
+split_matrix_by_sampling <- function(df_, chunk_size = 1000) {
+  # initialize the available indices (excluding the first column, which is fixed)
+  all_indices <- 2:ncol(df_) # exclude the "pop" column (column 1)
+
+  # list to store the sub-matrices
+  sub_matrices <- list()
+
+  # repeat until all indices are exhausted
+  while (length(all_indices) > 0) {
+    # if the number of remaining indices is less than the chunk_size, take all remaining indices
+    if (length(all_indices) <= chunk_size) {
+      sampled_indices <- all_indices
+    } else {
+      # otherwise, randomly sample chunk_size indices without replacement
+      sampled_indices <- sample(all_indices, chunk_size, replace = FALSE)
+    }
+
+    # create the sub-matrix including the first column and the sampled indices
+    df_subset <- df_[, c(1, sampled_indices)]
+
+    # add the sub-matrix to the list
+    sub_matrices <- append(sub_matrices, list(df_subset))
+
+    # remove the sampled indices from the list of available indices
+    all_indices <- setdiff(all_indices, sampled_indices)
+  }
+
+  # return the list of sub-matrices
+  return(sub_matrices)
+}
+
