@@ -522,15 +522,19 @@ for (species in list_species) {
     mutate(
       GBLUP_wiser = as.numeric(sub(" \\(.*", "", GBLUP_PA_wiser)),
       GBLUP_ls_means = as.numeric(sub(" \\(.*", "", GBLUP_PA_ls_means)),
-      GBLUP_blups = as.numeric(sub(" \\(.*", "", GBLUP_PA_blups))
+      GBLUP_blups = as.numeric(sub(" \\(.*", "", GBLUP_PA_blups)),
+      GBLUP_PA_blups_pca = as.numeric(sub(" \\(.*", "", GBLUP_PA_blups_pca))
     ) %>%
-    select(Trait, GBLUP_wiser, GBLUP_ls_means, GBLUP_blups) %>%
+    select(Trait, GBLUP_wiser, GBLUP_ls_means, GBLUP_blups, GBLUP_PA_blups_pca) %>%
     tidyr::pivot_longer(-Trait, names_to = "Method", values_to = "Median")
 
   # change labels
   df_median_pa$Method[
     df_median_pa$Method == "GBLUP_blups"
   ] <- "GBLUP median PA for BLUP phenotypes"
+  df_median_pa$Method[
+    df_median_pa$Method == "GBLUP_blups_pca"
+  ] <- "GBLUP median PA for BLUP PCA phenotypes"
   df_median_pa$Method[
     df_median_pa$Method == "GBLUP_ls_means"
   ] <- "GBLUP median PA for LS-means phenotypes"
@@ -540,13 +544,13 @@ for (species in list_species) {
 
   median_pa_plot_ <- plot_ly(df_median_pa,
     x = ~Trait, y = ~Median, color = ~Method,
-    colors = c("#2E8B57", "#FFB200", "#005AB5"),
+    colors = c("#2E8B57", "#FFB200", "purple", "#005AB5"),
     type = "scatter", mode = "lines+markers"
   ) %>%
     layout(
       title = paste0(
         species,
-        " GBLUP median predictive ability (PA) for traits across BLUP, LS-means, and WISER phenotypes,
+        " GBLUP median predictive ability (PA) for traits across BLUP, BLUP PCA, LS-means, and WISER phenotypes,
       based on ", nb_snp, " SNP across ", n_shuff_,
         " shuffling scenarios for ", k_folds_, "-fold cross-validation"
       ),
@@ -616,14 +620,16 @@ colnames(df_pa_median_iqr_all_species_traits) <- c(
   "Trait",
   "GBLUP_median_PA_wiser",
   "GBLUP_median_PA_ls_means",
-  "GBLUP_median_PA_blups"
+  "GBLUP_median_PA_blups",
+  "GBLUP_median_PA_blups_pca"
 )
 colnames(df_h2_result_all_species_traits) <- c(
   "Species",
   "Trait",
   "GBLUP_median_h2_wiser",
   "GBLUP_median_h2_ls_means",
-  "GBLUP_median_h2_blups"
+  "GBLUP_median_h2_blups",
+  "GBLUP_median_h2_blups_pca"
 )
 
 # merge data frames to garantee data analyses integrity
@@ -657,22 +663,39 @@ merged_data <- merge(merged_data,
   by = c("Species", "Trait")
 )
 
+# write merged data if case of later need
+fwrite(
+  merged_data,
+  "../results/merged_data.csv"
+)
+# merged_data <- as.data.frame(fread("../results/merged_data.csv"))
+
+
 # extract gblup pa medians and compute differences between these across all
 # species and traits
-df_pa_h2_diff_and_stats <- merged_data %>%
+df_ <- merged_data %>%
   mutate(
     GBLUP_median_PA_wiser = as.numeric(sub(" \\(.*", "", GBLUP_median_PA_wiser)),
     GBLUP_median_PA_ls_means = as.numeric(sub(" \\(.*", "", GBLUP_median_PA_ls_means)),
-    GBLUP_median_PA_gain = GBLUP_median_PA_wiser - GBLUP_median_PA_ls_means,
+    GBLUP_median_PA_blups = as.numeric(sub(" \\(.*", "", GBLUP_median_PA_blups)),
+    GBLUP_median_PA_gain_ls_means = GBLUP_median_PA_wiser - GBLUP_median_PA_ls_means,
+    GBLUP_median_PA_gain_blups = GBLUP_median_PA_wiser - GBLUP_median_PA_blups,
     GBLUP_median_h2_wiser = as.numeric(sub(" \\(.*", "", GBLUP_median_h2_wiser)),
     GBLUP_median_h2_ls_means = as.numeric(sub(" \\(.*", "", GBLUP_median_h2_ls_means)),
-    GBLUP_median_h2_difference = GBLUP_median_h2_wiser - GBLUP_median_h2_ls_means
+    GBLUP_median_h2_blups = as.numeric(sub(" \\(.*", "", GBLUP_median_h2_blups)),
+    GBLUP_median_h2_dev_ls_means = GBLUP_median_h2_wiser - GBLUP_median_h2_ls_means,
+    GBLUP_median_h2_dev_blups = GBLUP_median_h2_wiser - GBLUP_median_h2_blups
   ) %>%
   select(
     Species,
     Trait,
-    GBLUP_median_PA_gain,
-    GBLUP_median_h2_difference,
+    GBLUP_median_PA_gain_ls_means,
+    GBLUP_median_PA_gain_blups,
+    GBLUP_median_PA_ls_means,
+    GBLUP_median_PA_blups,
+    GBLUP_median_h2_blups,
+    GBLUP_median_h2_dev_ls_means,
+    GBLUP_median_h2_dev_blups,
     GBLUP_median_h2_wiser,
     Genotype_entropy,
     Genotype_site_entropy,
@@ -680,20 +703,52 @@ df_pa_h2_diff_and_stats <- merged_data %>%
     CH_value,
     Fst_value
   )
+
+# create data frame for correlation plots
+df_pa_h2_dev_and_stats <- rbind(
+  df_[, c("Species", "Trait")], df_[, c("Species", "Trait")]
+)
+df_pa_h2_dev_and_stats$GBLUP_median_PA_gain <- c(
+  df_$GBLUP_median_PA_gain_ls_means,
+  df_$GBLUP_median_PA_gain_blups
+)
+df_pa_h2_dev_and_stats$GBLUP_median_h2_deviation <- c(
+  df_$GBLUP_median_h2_dev_ls_means,
+  df_$GBLUP_median_h2_dev_blups
+)
+df_pa_h2_dev_and_stats$Genotype_entropy <- c(
+  df_$Genotype_entropy,
+  df_$Genotype_entropy
+)
+df_pa_h2_dev_and_stats$Genotype_site_entropy <- c(
+  df_$Genotype_site_entropy,
+  df_$Genotype_site_entropy
+)
+df_pa_h2_dev_and_stats$Genotype_envir_entropy <- c(
+  df_$Genotype_envir_entropy,
+  df_$Genotype_envir_entropy
+)
+df_pa_h2_dev_and_stats$Fst_value <- c(
+  df_$Fst_value,
+  df_$Fst_value
+)
+
 fwrite(
-  df_pa_h2_diff_and_stats,
+  df_pa_h2_dev_and_stats,
   "../results/gblup_median_pa_gain_h2_deviations_and_computed_stats.csv"
 )
 
-# df_pa_h2_diff_and_stats <- as.data.frame(fread(
-#   "../results/gblup_median_pa_gain_h2_deviations_and_computed_stats.csv"
-# ))
+df_pa_h2_dev_and_stats <- as.data.frame(fread(
+  "../results/gblup_median_pa_gain_h2_deviations_and_computed_stats.csv"
+))
 
-# compute average of median PA gain across all species and traits
-mean(df_pa_h2_diff_and_stats$GBLUP_median_PA_gain)
+# compute average of median PA gain and median h2 difference across all species
+# and traits
+mean(df_pa_h2_dev_and_stats$GBLUP_median_PA_gain)
+mean(df_pa_h2_dev_and_stats$GBLUP_median_h2_deviation)
 
 # compute median and iqr
-median_iqr_df <- as.data.frame(df_pa_h2_diff_and_stats %>%
+median_iqr_df <- as.data.frame(df_pa_h2_dev_and_stats %>%
   group_by(Species) %>%
   summarise(
     Genotype_entropy_median = round(median(Genotype_entropy), 3),
@@ -706,17 +761,17 @@ median_iqr_df
 # define variables to keep for correlation analyses
 vars_to_keep <- c(
   "GBLUP_median_PA_gain",
-  "GBLUP_median_h2_difference",
+  "GBLUP_median_h2_deviation",
   "Genotype_entropy",
   "Genotype_site_entropy",
   "Genotype_envir_entropy",
   "Fst_value"
 )
 
-# plot a correlation matrix for df_pa_h2_diff_and_stats, with values inside the circles
+# plot a correlation matrix for df_pa_h2_dev_and_stats, with values inside the circles
 # and only the lower triangular part without the diagonal
-df_pa_h2_diff_and_stats_all_traits <- df_pa_h2_diff_and_stats[, vars_to_keep]
-corr_matrix <- cor(df_pa_h2_diff_and_stats_all_traits)
+df_pa_h2_dev_and_stats_all_traits <- df_pa_h2_dev_and_stats[, vars_to_keep]
+corr_matrix <- cor(df_pa_h2_dev_and_stats_all_traits)
 
 # start the pdf device to save the plot
 pdf("../results/diff_median_pa_corr_plot.pdf",
@@ -725,7 +780,7 @@ pdf("../results/diff_median_pa_corr_plot.pdf",
 
 # reduce the margins (bottom, left, top, right)
 par(mar = c(4, 6, 4, 4)) # adjusted margins to ensure labels fit
-custom_corrplot_with_scatter(corr_matrix, df_pa_h2_diff_and_stats_all_traits,
+custom_corrplot_with_scatter(corr_matrix, df_pa_h2_dev_and_stats_all_traits,
   tl.col = "black",
   tl.srt = 45
 )
@@ -740,16 +795,16 @@ title(
 dev.off()
 
 
-# plot correlation matrices for df_pa_h2_diff_and_stats associated with specific
+# plot correlation matrices for df_pa_h2_dev_and_stats associated with specific
 # species (spec_), here "Apple"
 spec_ <- "Apple"
 
 # compute the correlation matrix for the specific species
-df_pa_h2_diff_and_stats_trait_ <- df_pa_h2_diff_and_stats[
-  df_pa_h2_diff_and_stats$Species == spec_,
+df_pa_h2_dev_and_stats_trait_ <- df_pa_h2_dev_and_stats[
+  df_pa_h2_dev_and_stats$Species == spec_,
   vars_to_keep
 ]
-corr_matrix_spec_ <- cor(df_pa_h2_diff_and_stats_trait_)
+corr_matrix_spec_ <- cor(df_pa_h2_dev_and_stats_trait_)
 
 # create a pdf file with adjusted dimensions
 pdf(paste0("../results/resdiff_median_pa_corr_plot_", spec_, ".pdf"),
@@ -758,7 +813,7 @@ pdf(paste0("../results/resdiff_median_pa_corr_plot_", spec_, ".pdf"),
 
 # plot the correlation matrix
 custom_corrplot_with_scatter(corr_matrix_spec_,
-  df_pa_h2_diff_and_stats_trait_,
+  df_pa_h2_dev_and_stats_trait_,
   tl.col = "black",
   tl.srt = 45
 )
@@ -782,12 +837,12 @@ fwrite(
   "../results/gblup_h2_median_iqr_all_species_traits_and_methods.csv"
 )
 
-# df_pa_median_iqr_all_species_traits <- as.data.frame(fread(
-#   "../results/gblup_pa_median_iqr_all_species_traits_and_methods.csv"
-# ))
-# df_h2_result_all_species_traits <- as.data.frame(fread(
-#   "../results/gblup_h2_median_iqr_all_species_traits_and_methods.csv"
-# ))
+df_pa_median_iqr_all_species_traits <- as.data.frame(fread(
+  "../results/gblup_pa_median_iqr_all_species_traits_and_methods.csv"
+))
+df_h2_result_all_species_traits <- as.data.frame(fread(
+  "../results/gblup_h2_median_iqr_all_species_traits_and_methods.csv"
+))
 
 # function to extract iqr values and compute their means
 calculate_mean_parentheses <- function(column) {
@@ -800,7 +855,8 @@ calculate_mean_parentheses <- function(column) {
 columns_to_calculate <- c(
   "GBLUP_median_PA_wiser",
   "GBLUP_median_PA_ls_means",
-  "GBLUP_median_PA_blups"
+  "GBLUP_median_PA_blups",
+  "GBLUP_median_PA_blups_pca"
 )
 mean_pa_iqr_results <- sapply(
   df_pa_median_iqr_all_species_traits[columns_to_calculate],
@@ -811,10 +867,21 @@ print(mean_pa_iqr_results)
 columns_to_calculate <- c(
   "GBLUP_median_h2_wiser",
   "GBLUP_median_h2_ls_means",
-  "GBLUP_median_h2_blups"
+  "GBLUP_median_h2_blups",
+  "GBLUP_median_h2_blups_pca"
 )
 mean_h2_iqr_results <- sapply(
   df_h2_result_all_species_traits[columns_to_calculate],
   calculate_mean_parentheses
 )
 print(mean_h2_iqr_results)
+
+# get all simulation results
+file_list <- list.files(
+  path = "../results/",
+  pattern = "sim_stats_medians_h2.*\\.csv$",
+  full.names = TRUE
+)
+
+# read and combine all results into a single data frame
+sim_df <- do.call(rbind, lapply(file_list, fread))

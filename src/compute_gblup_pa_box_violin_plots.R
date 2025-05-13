@@ -24,8 +24,9 @@ setwd(dirname(getActiveDocumentContext()$path))
 # ls-means and blup phenotype estimation
 blue_col_gblup <- c("#90B3E0", "#3D9BC5", "#005AB5", "#00407A", "#002A66")[3]
 yellow_col_gblup <- colorRampPalette(c("#FFEA00", "#FF7A00"))(5)[3]
+purple_col_gblup <- "purple"
 green_col_gblup <- c("#A3E4A7", "#66C266", "#2E8B57", "#006400", "#003200")[3]
-pa_colors_ <- c(blue_col_gblup, yellow_col_gblup, green_col_gblup)
+pa_colors_ <- c(blue_col_gblup, yellow_col_gblup, purple_col_gblup, green_col_gblup)
 
 # specify number of shuffling and folds for k-folds CV used in genomic
 # prediction evaluation scheme
@@ -33,7 +34,7 @@ n_shuff_ <- 20
 k_folds_ <- 5
 
 # define species
-list_species <- c("Rice", "Maize", "Apple", "Pine")
+list_species <- c("Rice", "Maize", "Pine", "Apple")
 
 # species <- list_species[4]
 for (species in list_species) {
@@ -180,7 +181,8 @@ for (species in list_species) {
     "Trait",
     "1. GBLUP PA for WISER phenotypes",
     "2. GBLUP PA for LS-means phenotypes",
-    "3. GBLUP PA for BLUP phenotypes"
+    "3. GBLUP PA for BLUP phenotypes",
+    "4. GBLUP PA for BLUP PCA phenotypes"
   )
 
   # rbind h2 list
@@ -192,13 +194,14 @@ for (species in list_species) {
     "Trait",
     "1. GBLUP h2 for WISER phenotypes",
     "2. GBLUP h2 for LS-means phenotypes",
-    "3. GBLUP h2 for BLUP phenotypes"
+    "3. GBLUP h2 for BLUP phenotypes",
+    "4. GBLUP h2 for BLUP PCA phenotypes"
   )
 
   # convert pa results to long format
   df_long_pa_result_traits <- df_pa_result_traits %>%
     pivot_longer(
-      cols = starts_with(c("1. GBLUP", "2. GBLUP", "3. GBLUP")),
+      cols = starts_with(c("1. GBLUP", "2. GBLUP", "3. GBLUP", "4. GBLUP")),
       names_to = "Method",
       values_to = "PA"
     )
@@ -206,7 +209,7 @@ for (species in list_species) {
   # convert h2 results to long format
   df_long_h2_result_traits <- df_h2_result_traits %>%
     pivot_longer(
-      cols = starts_with(c("1. GBLUP", "2. GBLUP", "3. GBLUP")),
+      cols = starts_with(c("1. GBLUP", "2. GBLUP", "3. GBLUP", "4. GBLUP")),
       names_to = "Method",
       values_to = "h2"
     )
@@ -216,7 +219,7 @@ for (species in list_species) {
   # create the dynamic title
   title_ <- paste0(
     species,
-    " GBLUP predictive ability (PA) for traits across WISER, LS-means and BLUP phenotypes, \n",
+    " GBLUP predictive ability (PA) for traits across WISER, LS-means, BLUP and BLUP PCA phenotypes, \n",
     "based on ", nb_snp, " SNP across ", n_shuff_,
     " shuffling scenarios for ", k_folds_, "-fold cross-validation"
   )

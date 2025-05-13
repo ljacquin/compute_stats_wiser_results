@@ -2,10 +2,10 @@
 #=============================================#
 #  script for launching compute_stats_pa_h2.R #
 #=============================================#
-### Requirements
-#SBATCH --partition=p01
-#SBATCH --nodes=1
-#SBATCH --ntasks-per-node=1
-#SBATCH --mem-per-cpu=90
-#SBATCH --cpus-per-task=16
+#SBATCH -A wiser
+#SBATCH --partition fast
+#SBATCH --mem 90GB
+#SBATCH --cpus-per-task 12
+source /etc/profile.d/modules.sh
+module load r/4.4.1
 Rscript compute_stats_pa_h2.R
