@@ -16,7 +16,7 @@ source("../src/functions.R")
 # initialize parameters
 set.seed(123)
 n_sim <- 100
-species_ <- "Apple"
+species_ <- "Rice"
 sig2_total <- 1        # set total phenotypic variance to 1
 h2 <- 0.5              # set heritability
 ge_sig2u_factor <- 0.5 # set gxe interaction variance as a factor of genetic variance
@@ -167,7 +167,7 @@ df_mse <- data.frame(
 # remove NA values
 df_rho <- df_rho %>% drop_na()
 title_ <- paste0(
-  "Predictive ability (PA) distributions between simulated and estimated genetic values,
+  "Estimation accuracy (EA) distributions between simulated and estimated genetic values,
   for v_hat (WISER) and u_hat (BLUE), for simulated trait based on ", tolower(species_),
   " genomic and experimental design data (h2 = ",
   h2, ")"
@@ -183,7 +183,7 @@ ggplot_rho <- ggplot(df_rho, aes(x = Method, y = Correlation, fill = Method)) +
     ) +
   scale_fill_brewer(palette = "Set2") +
   theme_minimal(base_family = "Calibri") +
-  ylab("Predictive ability (PA)") +
+  ylab("Estimation accuracy (EA)") +
   xlab("Genetic value estimation method") +
   rremove("legend.title") +
   theme(

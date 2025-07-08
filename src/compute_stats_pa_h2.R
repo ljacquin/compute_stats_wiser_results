@@ -885,3 +885,7 @@ file_list <- list.files(
 
 # read and combine all results into a single data frame
 sim_df <- do.call(rbind, lapply(file_list, fread))
+
+
+
+
