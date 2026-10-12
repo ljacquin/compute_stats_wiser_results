@@ -5,6 +5,8 @@
 rm(list = ls())
 library(reticulate)
 library(devtools)
+library(pandoc)
+pandoc::pandoc_activate("latest")
 # install other requirements from github if necessary
 if ("refpop_env" %in% conda_list()$name) {
   use_condaenv("refpop_env")
@@ -28,15 +30,18 @@ library(future.apply)
 library(adegenet)
 library(hierfstat)
 library(parallel)
-computation_mode <- "cluster"
-if (!identical(computation_mode, "cluster")) {
+library(vcd)
+parallelize_computation <- TRUE
+hpc_computation <- TRUE
+if (parallelize_computation && !hpc_computation) {
   library(rstudioapi)
   setwd(dirname(getActiveDocumentContext()$path))
 }
+setwd("compute_stats_wiser_results/src/")
 source("functions.R")
 
 # define number of cores for parallel computations
-nb_cores_ <- 12
+nb_cores_ <- 24
 
 # specify number of shuffling and folds for k-folds CV used in genomic
 # prediction evaluation scheme
@@ -58,6 +63,8 @@ list_species <- c("Rice", "Maize", "Apple", "Pine")
 # initialize empty data frames used for combining results into list
 df_pa_median_iqr_all_species_traits <- data.frame()
 df_h2_result_all_species_traits <- data.frame()
+df_nb_envir_all_species_traits <- data.frame()
+df_cramer_v_all_species_traits <- data.frame()
 df_geno_entropy_results_all_species_traits <- data.frame()
 df_geno_site_entropy_results_all_species_traits <- data.frame()
 df_geno_envir_entropy_results_all_species_traits <- data.frame()
@@ -104,6 +111,8 @@ for (species in list_species) {
   list_files_ <- list.files(input_geno_pred_species_data_path)
   list_pa_result_traits <- vector("list", length(list_traits))
   list_h2_result_traits <- vector("list", length(list_traits))
+  list_nb_envir_result_traits <- vector("list", length(list_traits))
+  list_cramer_v_result_traits <- vector("list", length(list_traits))
   list_geno_entropy_result_traits <- vector("list", length(list_traits))
   list_geno_site_entropy_result_traits <- vector("list", length(list_traits))
   list_geno_envir_entropy_result_traits <- vector("list", length(list_traits))
@@ -113,6 +122,8 @@ for (species in list_species) {
 
   names(list_pa_result_traits) <- list_traits
   names(list_h2_result_traits) <- list_traits
+  names(list_nb_envir_result_traits) <- list_traits
+  names(list_cramer_v_result_traits) <- list_traits
   names(list_geno_entropy_result_traits) <- list_traits
   names(list_geno_site_entropy_result_traits) <- list_traits
   names(list_geno_envir_entropy_result_traits) <- list_traits
@@ -367,7 +378,7 @@ for (species in list_species) {
           chunk_size = 1000
         )
 
-        if (!identical(computation_mode, "cluster")) {
+        if (parallelize_computation) {
           cl <- makeCluster(nb_cores_)
           clusterEvalQ(cl, {
             library(adegenet)
@@ -408,6 +419,19 @@ for (species in list_species) {
       trait_
     ]] <- umap_kmeans_opt_$opt_ch
 
+    # compute number of different environments available for the trait
+    list_nb_envir_result_traits[[
+      trait_
+    ]] <- length(unique(df_trait_genotype_site_envir$Envir))
+
+    # compute cramer v available for the trait
+    list_cramer_v_result_traits[[
+      trait_
+    ]] <- assocstats(table(
+      df_trait_genotype_site_envir$Genotype,
+      df_trait_genotype_site_envir$Envir
+    ))$cramer
+
     # compute entropy of genotype frequencies
     list_geno_entropy_result_traits[[
       trait_
@@ -439,7 +463,7 @@ for (species in list_species) {
     1:(ncol(df_pa_result_traits) - 2)
   )]
 
-  # get gblup pa results for species and traits across phenotype estimation methods
+  # get gblup pa results for species and traits across breeding value estimation methods
   df_gblup_pa_species_traits <- df_pa_result_traits[, str_detect(
     colnames(df_pa_result_traits), "Species|Trait|GBLUP"
   )]
@@ -456,6 +480,20 @@ for (species in list_species) {
     ncol(df_gblup_h2_species_traits), ncol(df_gblup_h2_species_traits) - 1,
     1:(ncol(df_gblup_h2_species_traits) - 2)
   )]
+
+  # convert nb envir list into data frame
+  df_nb_envir_results_traits <- data.frame(
+    "Species" = species,
+    "Trait" = names(list_nb_envir_result_traits),
+    "Nb_environments" = unlist(list_nb_envir_result_traits)
+  )
+
+  # convert cramer v list into data frame
+  df_cramer_v_results_traits <- data.frame(
+    "Species" = species,
+    "Trait" = names(list_cramer_v_result_traits),
+    "Cramer_v" = unlist(list_cramer_v_result_traits)
+  )
 
   # convert genotype entropy list into data frame
   df_geno_entropy_results_traits <- data.frame(
@@ -531,16 +569,16 @@ for (species in list_species) {
   # change labels
   df_median_pa$Method[
     df_median_pa$Method == "GBLUP_blups"
-  ] <- "GBLUP median PA for BLUP phenotypes"
+  ] <- "GBLUP median PA for BLUP breeding values"
   df_median_pa$Method[
     df_median_pa$Method == "GBLUP_blups_pca"
-  ] <- "GBLUP median PA for BLUP PCA phenotypes"
+  ] <- "GBLUP median PA for BLUP PCA breeding values"
   df_median_pa$Method[
     df_median_pa$Method == "GBLUP_ls_means"
-  ] <- "GBLUP median PA for LS-means phenotypes"
+  ] <- "GBLUP median PA for LS-means breeding values"
   df_median_pa$Method[
     df_median_pa$Method == "GBLUP_wiser"
-  ] <- "GBLUP median PA for WISER phenotypes"
+  ] <- "GBLUP median PA for WISER breeding values"
 
   median_pa_plot_ <- plot_ly(df_median_pa,
     x = ~Trait, y = ~Median, color = ~Method,
@@ -550,7 +588,7 @@ for (species in list_species) {
     layout(
       title = paste0(
         species,
-        " GBLUP median predictive ability (PA) for traits across BLUP, BLUP PCA, LS-means, and WISER phenotypes,
+        " GBLUP median predictive ability (PA) for traits across BLUP, BLUP PCA, LS-means, and WISER breeding values,
       based on ", nb_snp, " SNP across ", n_shuff_,
         " shuffling scenarios for ", k_folds_, "-fold cross-validation"
       ),
@@ -574,6 +612,16 @@ for (species in list_species) {
   )
   df_h2_result_all_species_traits <- rbind(
     df_h2_result_all_species_traits, df_gblup_h2_species_traits
+  )
+
+  # get nb environments for all species and traits
+  df_nb_envir_all_species_traits <- rbind(
+    df_nb_envir_all_species_traits, df_nb_envir_results_traits
+  )
+
+  # get cramer v for all species and traits
+  df_cramer_v_all_species_traits <- rbind(
+    df_cramer_v_all_species_traits, df_cramer_v_results_traits
   )
 
   # get detected number of clusters for all species and traits
@@ -614,7 +662,7 @@ for (species in list_species) {
 }
 # end of computation for species
 
-# data treatment section
+# --- data treatment section
 colnames(df_pa_median_iqr_all_species_traits) <- c(
   "Species",
   "Trait",
@@ -636,6 +684,14 @@ colnames(df_h2_result_all_species_traits) <- c(
 merged_data <- merge(
   df_pa_median_iqr_all_species_traits,
   df_h2_result_all_species_traits,
+  by = c("Species", "Trait")
+)
+merged_data <- merge(merged_data,
+  df_nb_envir_all_species_traits,
+  by = c("Species", "Trait")
+)
+merged_data <- merge(merged_data,
+  df_cramer_v_all_species_traits,
   by = c("Species", "Trait")
 )
 merged_data <- merge(merged_data,
@@ -668,8 +724,7 @@ fwrite(
   merged_data,
   "../results/merged_data.csv"
 )
-# merged_data <- as.data.frame(fread("../results/merged_data.csv"))
-
+merged_data <- as.data.frame(fread("../results/merged_data.csv"))
 
 # extract gblup pa medians and compute differences between these across all
 # species and traits
@@ -686,22 +741,25 @@ df_ <- merged_data %>%
     GBLUP_median_h2_dev_ls_means = GBLUP_median_h2_wiser - GBLUP_median_h2_ls_means,
     GBLUP_median_h2_dev_blups = GBLUP_median_h2_wiser - GBLUP_median_h2_blups
   ) %>%
-  select(
+  dplyr::select(
     Species,
     Trait,
+    GBLUP_median_PA_wiser,
     GBLUP_median_PA_gain_ls_means,
     GBLUP_median_PA_gain_blups,
     GBLUP_median_PA_ls_means,
     GBLUP_median_PA_blups,
-    GBLUP_median_h2_blups,
     GBLUP_median_h2_dev_ls_means,
     GBLUP_median_h2_dev_blups,
     GBLUP_median_h2_wiser,
+    GBLUP_median_h2_blups,
     Genotype_entropy,
     Genotype_site_entropy,
     Genotype_envir_entropy,
     CH_value,
-    Fst_value
+    Fst_value,
+    Nb_environments,
+    Cramer_v
   )
 
 # create data frame for correlation plots
@@ -727,6 +785,10 @@ df_pa_h2_dev_and_stats$Genotype_site_entropy <- c(
 df_pa_h2_dev_and_stats$Genotype_envir_entropy <- c(
   df_$Genotype_envir_entropy,
   df_$Genotype_envir_entropy
+)
+df_pa_h2_dev_and_stats$Cramer_v <- c(
+  df_$Cramer_v,
+  df_$Cramer_v
 )
 df_pa_h2_dev_and_stats$Fst_value <- c(
   df_$Fst_value,
@@ -762,6 +824,7 @@ median_iqr_df
 vars_to_keep <- c(
   "GBLUP_median_PA_gain",
   "GBLUP_median_h2_deviation",
+  "Cramer_v",
   "Genotype_entropy",
   "Genotype_site_entropy",
   "Genotype_envir_entropy",
@@ -771,6 +834,7 @@ vars_to_keep <- c(
 # plot a correlation matrix for df_pa_h2_dev_and_stats, with values inside the circles
 # and only the lower triangular part without the diagonal
 df_pa_h2_dev_and_stats_all_traits <- df_pa_h2_dev_and_stats[, vars_to_keep]
+names(df_pa_h2_dev_and_stats_all_traits)[3] <- "Genotype_envir_Cramer_v"
 corr_matrix <- cor(df_pa_h2_dev_and_stats_all_traits)
 
 # start the pdf device to save the plot
@@ -787,7 +851,7 @@ custom_corrplot_with_scatter(corr_matrix, df_pa_h2_dev_and_stats_all_traits,
 # add a title to the plot
 title(
   main = "Correlation plots between GBLUP median PA gain, median h2 deviations,
-  Shannon entropies, and Fst values across all species and traits.",
+  Cramér’s V, Shannon entropies, and Fst values across all species and traits.",
   line = 1, cex.main = 1.2
 )
 
@@ -804,6 +868,7 @@ df_pa_h2_dev_and_stats_trait_ <- df_pa_h2_dev_and_stats[
   df_pa_h2_dev_and_stats$Species == spec_,
   vars_to_keep
 ]
+names(df_pa_h2_dev_and_stats_trait_)[3] <- "Genotype_envir_Cramer_v"
 corr_matrix_spec_ <- cor(df_pa_h2_dev_and_stats_trait_)
 
 # create a pdf file with adjusted dimensions
@@ -819,8 +884,8 @@ custom_corrplot_with_scatter(corr_matrix_spec_,
 )
 # define title
 title(
-  main = paste0("Correlation plots between GBLUP median PA gain, median h2 deviations,
-  Shannon entropies, and Fst values for ", tolower(spec_), " traits."),
+  main = paste0("Correlation plots between GBLUP median PA gain, median h2 deviations, 
+  Cramér’s V, Shannon entropies, and Fst values for ", tolower(spec_), " traits."),
   line = 1, cex.main = 1.2
 )
 
@@ -882,5 +947,3 @@ file_list <- list.files(
   pattern = "sim_stats_medians_h2.*\\.csv$",
   full.names = TRUE
 )
-
-

@@ -1,4 +1,4 @@
-options(timeout=400)
+options(timeout = 400)
 options(repos = c(CRAN = "https://cran.r-project.org"))
 install.packages("devtools")
 install.packages("reticulate")

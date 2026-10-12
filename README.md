@@ -28,7 +28,7 @@ Download the ```compute_stats_wiser_results``` repository in the current user's 
   
 * The ```R``` script ```src/compute_stats_pa_h2.R``` computes the statistics presented in the WISER publication.
 
-* The ```R``` script ```src/compute_gblup_pa_box_violin_plots.R``` generates box and violin plots for the genomic best linear unbiased predictor (GBLUP) predictive abilities (PA) across traits for each species, based on the different phenotypic estimation methods presented in the publication.
+* The ```R``` script ```src/compute_gblup_pa_box_violin_plots.R``` generates box and violin plots for the genomic best linear unbiased predictor (GBLUP) predictive abilities (PA) across traits for each species, based on the different breeding value estimation methods presented in the publication.
 
 * For computing the statistics using SLURM on a HPC cluster, execute the following commands to make scripts and programs executable :
 

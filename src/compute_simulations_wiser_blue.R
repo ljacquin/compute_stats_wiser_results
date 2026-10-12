@@ -10,23 +10,23 @@ library(whitening)
 library(lme4)
 library(tidyr)
 library(rstudioapi)
-setwd(dirname(getActiveDocumentContext()$path))
-source("../src/functions.R")
+setwd("compute_stats_wiser_results/src/")
+source("functions.R")
 
 # initialize parameters
 set.seed(123)
 n_sim <- 100
-species_ <- "Rice"
-sig2_total <- 1        # set total phenotypic variance to 1
-h2 <- 0.5              # set heritability
+species_ <- "Pine" # Rice, Maize, Apple, Pine
+sig2_total <- 1 # set total phenotypic variance to 1
+h2 <- 0.5 # set heritability
 ge_sig2u_factor <- 0.5 # set gxe interaction variance as a factor of genetic variance
 whiten_method_ <- "ZCA-cor"
 alpha_ <- 0.1
 snp_sample_size_ <- 50e3
-nrow_lim <- 1000       # optimize computation time
+nrow_lim <- 1000 # optimize computation time
 
 # define result path
-output_result_path <- "../results/"
+output_result_path <- "../results/wiser_blue_naive/"
 
 # load datasets
 omic_df <- fread(paste0("../data/genomic_data_", species_, ".csv")) |>
@@ -56,10 +56,20 @@ sel_geno <- intersect(omic_df$Genotype, pheno_df$Genotype)
 omic_df <- omic_df[omic_df$Genotype %in% sel_geno, ]
 pheno_df <- pheno_df[pheno_df$Genotype %in% sel_geno, ]
 
+# define genotype order
+geno_list <- sort(unique(pheno_df$Genotype))
+
+# reorder genomic data accordingly
+omic_df <- omic_df[match(geno_list, omic_df$Genotype), ]
+
+# safety check
+stopifnot(identical(omic_df$Genotype, geno_list))
+
 # compute kinship matrix
 snp_mat <- apply(omic_df[, -1], 2, as.numeric)
 K <- snp_mat %*% t(snp_mat)
-K <- K / (sum(diag(K)) / nrow(K))
+K <- K / mean(diag(K))
+rownames(K) <- colnames(K) <- geno_list
 
 # compute incidence matrices
 geno_list <- sort(unique(pheno_df$Genotype))
@@ -122,21 +132,24 @@ for (sim_ in 1:n_sim) {
   # simulate residuals, genetic and g x e effects
   epsilon <- rnorm(len_y, 0, sqrt(sig2e))
   u <- drop(mvrnorm(1, mu = rep(0, n_geno_), Sigma = sig2u * K))
+  u <- u - mean(u)
   ge_ <- rnorm(n_geno_ * n_env_, 0, sqrt(sig2ge))
 
   Y <- X %*% beta_ + Z %*% u + Z_ge %*% ge_ + epsilon
   pheno_df$trait <- Y
   geno_u_df <- data.frame(Genotype = geno_list, u = u)
 
-  # WISER
+  # wiser
   beta_hat <- ginv(t(X_tilde) %*% X_tilde) %*% t(X_tilde) %*% Y
   v_hat <- ginv(t(Z) %*% Z) %*% t(Z) %*% (Y - X_tilde %*% beta_hat)
+  v_hat <- v_hat - mean(v_hat)
   df_v_hat <- data.frame(Genotype = geno_list, v_hat = v_hat)
 
-  # WISER without whitening, i.e. classical linear model with Envir and
+  # wiser without whitening, i.e. classical linear model with Envir and
   # Genotype as fixed effects
-  lm_ <- lm(trait ~ Genotype + Envir, data = pheno_df)
+  lm_ <- lm(trait ~ 0 + Genotype + Envir, data = pheno_df)
   geno_hat <- coef(lm_)[grep("Genotype", names(coef(lm_)))]
+  geno_hat <- geno_hat - mean(geno_hat)
   geno_hat_df <- data.frame(
     Genotype = gsub("Genotype", "", names(geno_hat)),
     geno_hat_blue = as.numeric(geno_hat)
@@ -276,13 +289,13 @@ ggplot_rho
 medians_df <- data.frame(
   species = species_,
   statistic = c("Correlation", "MSE"),
-  BLUE = c(
-    format_median_iqr(df_rho$Correlation[df_rho$Method == "BLUE"]),
-    format_median_iqr(df_mse$MSE[df_mse$Method == "BLUE"])
-  ),
   WISER = c(
     format_median_iqr(df_rho$Correlation[df_rho$Method == "WISER"]),
     format_median_iqr(df_mse$MSE[df_mse$Method == "WISER"])
+  ),
+  BLUE = c(
+    format_median_iqr(df_rho$Correlation[df_rho$Method == "BLUE"]),
+    format_median_iqr(df_mse$MSE[df_mse$Method == "BLUE"])
   )
 )
 

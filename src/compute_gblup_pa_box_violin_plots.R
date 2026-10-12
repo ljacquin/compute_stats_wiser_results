@@ -6,9 +6,9 @@ rm(list = ls())
 library(reticulate)
 library(devtools)
 # install other requirements from github if necessary
-if ("refpop_env" %in% conda_list()$name) {
-  use_condaenv("refpop_env")
-}
+# if ("refpop_env" %in% conda_list()$name) {
+#   use_condaenv("refpop_env")
+# }
 library(MASS)
 library(data.table)
 library(stringr)
@@ -21,7 +21,7 @@ library(rstudioapi)
 setwd(dirname(getActiveDocumentContext()$path))
 
 # set color vector for gblup predictive abilities (pa) associated to wiser,
-# ls-means and blup phenotype estimation
+# ls-means and blup breeding value estimation
 blue_col_gblup <- c("#90B3E0", "#3D9BC5", "#005AB5", "#00407A", "#002A66")[3]
 yellow_col_gblup <- colorRampPalette(c("#FFEA00", "#FF7A00"))(5)[3]
 purple_col_gblup <- "purple"
@@ -179,10 +179,10 @@ for (species in list_species) {
   )
   colnames(df_pa_result_traits) <- c(
     "Trait",
-    "1. GBLUP PA for WISER phenotypes",
-    "2. GBLUP PA for LS-means phenotypes",
-    "3. GBLUP PA for BLUP phenotypes",
-    "4. GBLUP PA for BLUP PCA phenotypes"
+    "1. GBLUP PA for WISER estimated BVs",
+    "2. GBLUP PA for LS-means estimated BVs",
+    "3. GBLUP PA for BLUP estimated BVs",
+    "4. GBLUP PA for BLUP PCA estimated BVs"
   )
 
   # rbind h2 list
@@ -192,10 +192,10 @@ for (species in list_species) {
   )
   colnames(df_h2_result_traits) <- c(
     "Trait",
-    "1. GBLUP h2 for WISER phenotypes",
-    "2. GBLUP h2 for LS-means phenotypes",
-    "3. GBLUP h2 for BLUP phenotypes",
-    "4. GBLUP h2 for BLUP PCA phenotypes"
+    "1. GBLUP h2 for WISER estimated BVs",
+    "2. GBLUP h2 for LS-means estimated BVs",
+    "3. GBLUP h2 for BLUP estimated BVs",
+    "4. GBLUP h2 for BLUP PCA estimated BVs"
   )
 
   # convert pa results to long format
@@ -214,12 +214,12 @@ for (species in list_species) {
       values_to = "h2"
     )
 
-  # make ggplot for gblup pa across traits and phenotypic estimation methods
+  # make ggplot for gblup pa across traits and breeding value estimation methods
 
   # create the dynamic title
   title_ <- paste0(
     species,
-    " GBLUP predictive ability (PA) for traits across WISER, LS-means, BLUP and BLUP PCA phenotypes, \n",
+    " GBLUP predictive ability (PA) for traits across WISER, LS-means, BLUP and BLUP PCA estimated breeding values (BVs), \n",
     "based on ", nb_snp, " SNP across ", n_shuff_,
     " shuffling scenarios for ", k_folds_, "-fold cross-validation"
   )
@@ -254,7 +254,7 @@ for (species in list_species) {
       axis.text = element_text(color = "black"),
       axis.ticks.length = unit(0.2, "cm"),
       axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1), # rotate x-axis labels
-      legend.position = c(0.45, 0.9)
+      legend.position = c(0.45, 0.91)
     ) +
     font("xylab", size = 15) +
     font("xy", size = 15) +

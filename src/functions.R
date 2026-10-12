@@ -1,3 +1,132 @@
+# function computing Cramer's V
+compute_cramer_v <- function(x, y) {
+  tab_ <- table(x, y)
+  if (
+    nrow(tab_) < 2 ||
+    ncol(tab_) < 2
+  ) {
+    return(NA_real_)
+  }
+  chi2_ <- suppressWarnings(
+    chisq.test(
+      tab_,
+      correct = FALSE
+    )$statistic
+  )
+  n_ <- sum(tab_)
+  min_dim_ <- min(
+    nrow(tab_) - 1,
+    ncol(tab_) - 1
+  )
+  if (min_dim_ <= 0) {
+    return(NA_real_)
+  }
+  sqrt(
+    as.numeric(chi2_) /
+      (n_ * min_dim_)
+  )
+}
+
+# function generating genotype x environment imbalance
+#
+# target_v = 0:
+#   genotype and environment are approximately independent
+#
+# target_v = 1:
+#   environments are maximally associated with genotype groups
+#
+# the genotype groups are created randomly to avoid explicitly
+# using the genetic values simulated later in the experiment.
+
+resample_to_cramer_v <- function(
+    pheno_df_,
+    target_v_,
+    tolerance_ = 0.02,
+    max_iter_ = 5000
+) {
+  df_ <- pheno_df_
+  geno_list_ <- unique(df_$Genotype)
+  env_list_ <- unique(df_$Envir)
+  
+  n_env_ <- length(env_list_)
+  
+  if (n_env_ < 2) {
+    stop("At least two environments are required.")
+  }
+  
+  # assign each genotype to one group
+  geno_group_ <- sample(
+    env_list_,
+    size = length(geno_list_),
+    replace = TRUE
+  )
+  names(geno_group_) <- geno_list_
+  df_$geno_group_tmp <- geno_group_[
+    df_$Genotype
+  ]
+  
+  best_df_ <- NULL
+  best_v_ <- NA_real_
+  best_distance_ <- Inf
+  
+  for (iter_ in seq_len(max_iter_)) {
+    # probability of assigning the preferred environment
+    #
+    # target_v = 0 -> random assignment
+    # target_v = 1 -> nearly deterministic assignment
+    
+    new_env_ <- vapply(
+      df_$geno_group_tmp,
+      function(preferred_env_) {
+        if (runif(1) < target_v_) {
+          preferred_env_
+        } else {
+          sample(
+            env_list_,
+            size = 1
+          )
+        }
+      },
+      character(1)
+    )
+    tmp_df_ <- df_
+    tmp_df_$Envir <- new_env_
+    
+    actual_v_ <- compute_cramer_v(
+      tmp_df_$geno_group_tmp,
+      tmp_df_$Envir
+    )
+    
+    if (is.na(actual_v_)) {
+      next
+    }
+    
+    current_distance_ <- abs(
+      actual_v_ - target_v_
+    )
+    
+    if (current_distance_ < best_distance_) {
+      best_distance_ <- current_distance_
+      best_v_ <- actual_v_
+      best_df_ <- tmp_df_
+    }
+    
+    if (current_distance_ <= tolerance_) {
+      break
+    }
+  }
+  
+  if (is.null(best_df_)) {
+    stop("Unable to generate a dataset with a valid Cramer's V.")
+  }
+  best_df_$geno_group_tmp <- NULL
+  
+  list(
+    pheno_df = best_df_,
+    cramer_v = best_v_
+  )
+}
+
 # function to compute entropy for a factor
 compute_entropy_factor <- function(v) {
   freq_tab <- table(v)
@@ -343,8 +472,9 @@ split_matrix_by_sampling <- function(df_, chunk_size = 1000) {
 }
 
 simulate_experimental_design <- function(
-    n_env = 10,
-    n_geno = 30, n_rep = 5) {
+  n_env = 10,
+  n_geno = 30, n_rep = 5
+) {
   # create a list of environments
   env_list_ <- paste0("environment_", 1:n_env)
 
@@ -366,8 +496,9 @@ simulate_experimental_design <- function(
 
 
 simulate_experimental_design <- function(
-    n_env = 10,
-    n_geno = 30, n_rep = 5) {
+  n_env = 10,
+  n_geno = 30, n_rep = 5
+) {
   # create a list of environments
   env_list_ <- paste0("environment_", 1:n_env)
 
@@ -393,16 +524,16 @@ simulate_experimental_design <- function(
 }
 
 simulate_experimental_design <- function(
-    n_env = 30,
-    n_geno = 30,
-    min_n_rep = 2,
-    max_n_rep = 5,
-    control_genotypes = c("genotype_1", "genotype_2"), # specify control genotypes
-    control_multiplier = 2, # factor to increase repetitions for control genotypes
-    missing_rate = 0.2, # proportion of genotypes to remove per environment
-    apply_missing_rate = FALSE,
-    collinearity_strength = 0.1 # strength of genotype-environment correlation
-    ) {
+  n_env = 30,
+  n_geno = 30,
+  min_n_rep = 2,
+  max_n_rep = 5,
+  control_genotypes = c("genotype_1", "genotype_2"), # specify control genotypes
+  control_multiplier = 2, # factor to increase repetitions for control genotypes
+  missing_rate = 0.2, # proportion of genotypes to remove per environment
+  apply_missing_rate = FALSE,
+  collinearity_strength = 0.1 # strength of genotype-environment correlation
+) {
   # create a list of environments
   env_list_ <- paste0("environment_", 1:n_env)
 
@@ -1280,11 +1411,12 @@ reduce_dataset_based_on_genotypes <- function(df_, nrow_approx_lim = 10e3,
 
 # function which reduce dataset based on selected whitening method
 reduce_dataset_based_on_selected_whitening <- function(
-    whitening_method,
-    raw_pheno_df,
-    nrow_approx_lim_raw_dataset_zca_cor,
-    nrow_approx_lim_raw_dataset_pca_cor,
-    nrow_approx_lim_raw_dataset_chol) {
+  whitening_method,
+  raw_pheno_df,
+  nrow_approx_lim_raw_dataset_zca_cor,
+  nrow_approx_lim_raw_dataset_pca_cor,
+  nrow_approx_lim_raw_dataset_chol
+) {
   set.seed(123)
   if (whitening_method == "ZCA-cor") {
     raw_pheno_df <- as.data.frame(
@@ -1313,11 +1445,12 @@ reduce_dataset_based_on_selected_whitening <- function(
 
 # function which get raw phenotypes and marker based on common genotypes
 raw_pheno_and_marker_based_on_trait_common_genotypes <- function(
-    raw_pheno_df,
-    omic_df,
-    trait_,
-    fixed_effects_vars,
-    random_effects_vars) {
+  raw_pheno_df,
+  omic_df,
+  trait_,
+  fixed_effects_vars,
+  random_effects_vars
+) {
   # remove all rows with na w.r.t to trait_
   raw_pheno_df[, trait_] <- as.numeric(raw_pheno_df[, trait_])
   raw_pheno_df <- raw_pheno_df %>% drop_na(all_of(trait_))
@@ -1344,11 +1477,12 @@ raw_pheno_and_marker_based_on_trait_common_genotypes <- function(
 
 # function which computes fixed effect vars as factors for those declared as
 compute_fixed_effect_vars_declared_as_factors <- function(
-    raw_pheno_df,
-    fixed_effects_vars,
-    fixed_effects_vars_computed_as_factor,
-    envir_var,
-    fixed_effects_vars_computed_as_factor_by_envir) {
+  raw_pheno_df,
+  fixed_effects_vars,
+  fixed_effects_vars_computed_as_factor,
+  envir_var,
+  fixed_effects_vars_computed_as_factor_by_envir
+) {
   # convert fixed effects variables to factors for those declared
   for (fix_eff_var_ in fixed_effects_vars) {
     if ((length(fixed_effects_vars_computed_as_factor) > 0) &&
@@ -1407,10 +1541,11 @@ compute_gram_matrix <- function(omic_df, kernel_type) {
 # NB. column of ones is added for intercept, and is associated to first
 # fixed effect (which must be factor or numeric) during construction
 compute_incidence_matrices_fixed_and_random_effects <- function(
-    fixed_effects_vars,
-    fixed_effects_vars_computed_as_factor,
-    random_effects_vars,
-    raw_pheno_df) {
+  fixed_effects_vars,
+  fixed_effects_vars_computed_as_factor,
+  random_effects_vars,
+  raw_pheno_df
+) {
   # define list of incidence matrices for fixed effects
   list_x_mat <- vector("list", length(fixed_effects_vars))
   names(list_x_mat) <- fixed_effects_vars
@@ -1736,21 +1871,22 @@ abc_variance_component_estimation <- function(y, x_mat, z_mat, k_mat, beta_hat,
 
 # function which computes transformed fixed variables and least squares
 compute_transformed_vars_and_ols_estimates <- function(
-    omic_df, raw_pheno_df, trait_,
-    fixed_effects_vars,
-    fixed_effects_vars_computed_as_factor,
-    envir_var,
-    fixed_effects_vars_computed_as_factor_by_envir,
-    random_effects_vars,
-    sigma2_u, sigma2_e, kernel_type,
-    whitening_method,
-    regularization_method,
-    alpha_,
-    parallelized_cholesky,
-    reduce_raw_dataset_size_,
-    nrow_approx_lim_raw_dataset_zca_cor,
-    nrow_approx_lim_raw_dataset_pca_cor,
-    nrow_approx_lim_raw_dataset_chol) {
+  omic_df, raw_pheno_df, trait_,
+  fixed_effects_vars,
+  fixed_effects_vars_computed_as_factor,
+  envir_var,
+  fixed_effects_vars_computed_as_factor_by_envir,
+  random_effects_vars,
+  sigma2_u, sigma2_e, kernel_type,
+  whitening_method,
+  regularization_method,
+  alpha_,
+  parallelized_cholesky,
+  reduce_raw_dataset_size_,
+  nrow_approx_lim_raw_dataset_zca_cor,
+  nrow_approx_lim_raw_dataset_pca_cor,
+  nrow_approx_lim_raw_dataset_chol
+) {
   tryCatch(
     {
       # get raw phenotypes and omic data based on common genotypes
@@ -1900,38 +2036,37 @@ generate_row_position_variables_by_environment <- function(df) {
   return(df)
 }
 
-# function which computes phenotypes approximating genetic values using whitening
-estimate_wiser_phenotype <- function(omic_df, raw_pheno_df, trait_,
-                                     fixed_effects_vars = c(
-                                       "Envir", "Row", "Position"
-                                     ),
-                                     fixed_effects_vars_computed_as_factor = c(
-                                       "Envir", "Row", "Position"
-                                     ),
-                                     envir_var = "Envir",
-                                     fixed_effects_vars_computed_as_factor_by_envir = c("Row", "Position"),
-                                     random_effects_vars = "Genotype",
-                                     init_sigma2_u = 1,
-                                     init_sigma2_e = 1,
-                                     prior_sigma2_lower_bound = 1e-2,
-                                     n_sim_abc = 100,
-                                     seed_abc = 123,
-                                     quantile_threshold_abc = 0.05,
-                                     nb_iter_abc = 1,
-                                     kernel_type = "linear",
-                                     whitening_method = "ZCA-cor",
-                                     regularization_method = "frobenius_norm_regularization",
-                                     alpha_ = 0.01,
-                                     parallelized_cholesky = T,
-                                     reduce_raw_dataset_size_ = T,
-                                     nrow_approx_lim_raw_dataset_zca_cor = 20e3,
-                                     nrow_approx_lim_raw_dataset_pca_cor = 20e3,
-                                     nrow_approx_lim_raw_dataset_chol = 40e3) {
+# function which computes breeding values approximating genetic values using whitening
+estimate_wiser_breeding_value <- function(omic_df, raw_pheno_df, trait_,
+                                          fixed_effects_vars = c(
+                                            "Envir", "Row", "Position"
+                                          ),
+                                          fixed_effects_vars_computed_as_factor = c(
+                                            "Envir", "Row", "Position"
+                                          ),
+                                          envir_var = "Envir",
+                                          fixed_effects_vars_computed_as_factor_by_envir = c("Row", "Position"),
+                                          random_effects_vars = "Genotype",
+                                          init_sigma2_u = 1,
+                                          init_sigma2_e = 1,
+                                          prior_sigma2_lower_bound = 1e-2,
+                                          n_sim_abc = 100,
+                                          seed_abc = 123,
+                                          quantile_threshold_abc = 0.05,
+                                          nb_iter_abc = 1,
+                                          kernel_type = "linear",
+                                          whitening_method = "ZCA-cor",
+                                          regularization_method = "frobenius_norm_regularization",
+                                          alpha_ = 0.01,
+                                          parallelized_cholesky = T,
+                                          reduce_raw_dataset_size_ = T,
+                                          nrow_approx_lim_raw_dataset_zca_cor = 20e3,
+                                          nrow_approx_lim_raw_dataset_pca_cor = 20e3,
+                                          nrow_approx_lim_raw_dataset_chol = 40e3) {
   # compute transformed variables associated to fixed effects and least-squares
   # to estimate these
   tryCatch(
     {
-
       transform_and_ls_obj <- compute_transformed_vars_and_ols_estimates(
         omic_df, raw_pheno_df, trait_,
         fixed_effects_vars,
@@ -2006,12 +2141,12 @@ estimate_wiser_phenotype <- function(omic_df, raw_pheno_df, trait_,
       # extract estimated fixed effects
       beta_hat <- transform_and_ls_obj$beta_hat
 
-      # compute phenotypic values using ols
+      # compute breeding values values using ols
       v_hat <- ginv(t(transform_and_ls_obj$z_mat) %*% transform_and_ls_obj$z_mat) %*%
         t(transform_and_ls_obj$z_mat) %*% transform_and_ls_obj$xi_hat
 
       # save wiser fixed effects estimates in a data frame
-      wiser_pheno_df <- data.frame(
+      wiser_bv_df <- data.frame(
         "Genotype" = str_replace_all(
           colnames(transform_and_ls_obj$z_mat),
           pattern = "Genotype_",
@@ -2020,7 +2155,7 @@ estimate_wiser_phenotype <- function(omic_df, raw_pheno_df, trait_,
         "v_hat" = v_hat
       )
 
-      # save wiser phenotypes in a data frame
+      # save wiser breeding values in a data frame
       wiser_fix_eff_df <- data.frame(
         "fixed_effect_var" = colnames(transform_and_ls_obj$x_mat),
         "beta_hat_var" = beta_hat
@@ -2032,14 +2167,14 @@ estimate_wiser_phenotype <- function(omic_df, raw_pheno_df, trait_,
         "w_mat" = transform_and_ls_obj$w_mat,
         "wiser_fixed_effect_estimates" = wiser_fix_eff_df,
         "wiser_abc_variance_component_estimates" = var_comp_abc_obj,
-        "wiser_phenotypes" = wiser_pheno_df,
+        "wiser_breeding_values" = wiser_bv_df,
         "wiser_z_mat" = transform_and_ls_obj$z_mat,
         "wiser_x_mat" = transform_and_ls_obj$x_mat,
         "wiser_x_mat_tilde" = transform_and_ls_obj$x_mat_tilde,
         "wiser_xi_hat" = transform_and_ls_obj$xi_hat,
         "wiser_y_hat" = transform_and_ls_obj$y_hat,
         "wiser_y" = transform_and_ls_obj$y,
-        "wiser_xi_phenotypes" <- transform_and_ls_obj$xi_phenotypes
+        "wiser_xi_phenotypes" = transform_and_ls_obj$xi_phenotypes
       ))
     },
     error = function(e) {
@@ -2063,7 +2198,7 @@ perform_kfold_cv_wiser <- function(omic_df, raw_pheno_df, trait_,
                                    wiser_obj_local) {
   # extract the local wiser object
   omic_df <- wiser_obj_local$wiser_omic_data
-  v_hat <- wiser_obj_local$wiser_phenotypes$v_hat
+  v_hat <- wiser_obj_local$wiser_breeding_values$v_hat
 
   # set seed for reproducibility and get set of indices
   set.seed(123)
@@ -2176,27 +2311,28 @@ perform_kfold_cv_wiser <- function(omic_df, raw_pheno_df, trait_,
 
 # function which finds the optimal whitening method and regularization
 optimize_whitening_and_regularization <- function(
-    omic_df, raw_pheno_df, trait_,
-    fixed_effects_vars = c(
-      "Envir", "Country", "Year",
-      "Row", "Position", "Management"
-    ),
-    fixed_effects_vars_computed_as_factor = c(
-      "Envir", "Country", "Year",
-      "Row", "Position", "Management"
-    ),
-    envir_var = "Country",
-    fixed_effects_vars_computed_as_factor_by_envir = c("Row", "Position"),
-    random_effects_vars = "Genotype",
-    prediction_method = c("rf", "svr", "gblup", "rkhs", "lasso"),
-    whitening_method_grid = c("ZCA-cor", "PCA-cor", "Cholesky"),
-    regularization_method_ = "frobenius_norm_regularization",
-    alpha_grid = c(0.01, 0.1),
-    reduce_raw_dataset_size_ = T,
-    nrow_approx_lim_raw_dataset_ = 5e3,
-    parallelized_cholesky = T,
-    k_folds_ = 5,
-    nb_cores_ = 12) {
+  omic_df, raw_pheno_df, trait_,
+  fixed_effects_vars = c(
+    "Envir", "Country", "Year",
+    "Row", "Position", "Management"
+  ),
+  fixed_effects_vars_computed_as_factor = c(
+    "Envir", "Country", "Year",
+    "Row", "Position", "Management"
+  ),
+  envir_var = "Country",
+  fixed_effects_vars_computed_as_factor_by_envir = c("Row", "Position"),
+  random_effects_vars = "Genotype",
+  prediction_method = c("rf", "svr", "gblup", "rkhs", "lasso"),
+  whitening_method_grid = c("ZCA-cor", "PCA-cor", "Cholesky"),
+  regularization_method_ = "frobenius_norm_regularization",
+  alpha_grid = c(0.01, 0.1),
+  reduce_raw_dataset_size_ = T,
+  nrow_approx_lim_raw_dataset_ = 5e3,
+  parallelized_cholesky = T,
+  k_folds_ = 5,
+  nb_cores_ = 12
+) {
   # remove all rows with na w.r.t to trait_
   raw_pheno_df <- raw_pheno_df %>% drop_na(all_of(trait_))
 
@@ -2239,7 +2375,7 @@ optimize_whitening_and_regularization <- function(
     method <- unique_combinations$whitening_method[j]
     alpha <- unique_combinations$alpha_[j]
 
-    wiser_obj <- estimate_wiser_phenotype(
+    wiser_obj <- estimate_wiser_breeding_value(
       omic_df, raw_pheno_df, trait_,
       fixed_effects_vars,
       fixed_effects_vars_computed_as_factor,
@@ -2388,16 +2524,16 @@ create_scatter_plot_with_linear_fit <- function(df_, trait_, env_) {
     layout(
       title = list(
         text = paste0(
-          trait_, " LS-means versus WISER phenotypes for ",
+          trait_, " LS-means versus WISER breeding values for ",
           env_
         ),
         x = 0.5
       ),
       xaxis = list(
-        title = "Genotype LS-means phenotype"
+        title = "Genotype LS-means breeding value"
       ),
       yaxis = list(
-        title = "Genotype WISER phenotype"
+        title = "Genotype WISER breeding value"
       ),
       annotations = list(
         x = x_annotation,
@@ -3080,12 +3216,13 @@ create_mean_h2_graphic_per_manage_and_site_gh <- function(site_,
 
 # function which compute pheno means per managment type across all environments
 create_mean_pheno_graphic_per_manage_and_all_env_gh <- function(
-    pheno_df_,
-    h2_outlier_path,
-    selected_traits_,
-    excluded_pseudo_trait_for_save_,
-    vect_alpha_mean_y,
-    output_gem_graphics_path) {
+  pheno_df_,
+  h2_outlier_path,
+  selected_traits_,
+  excluded_pseudo_trait_for_save_,
+  vect_alpha_mean_y,
+  output_gem_graphics_path
+) {
   # get environments for which h2 are inliers, for phenotypic means,
   # and create vector of variables to keep
   inlier_env_ <- as.data.frame(fread(paste0(
@@ -3382,13 +3519,14 @@ create_mean_pheno_graphic_per_manage_and_all_env_gh <- function(
 # function which compute pheno means per managment type across all environments and
 # site
 create_mean_pheno_graphic_per_manage_and_site_gh <- function(
-    site_,
-    pheno_df_,
-    h2_outlier_path,
-    selected_traits_,
-    excluded_pseudo_trait_for_save_,
-    vect_alpha_mean_y = 0.01,
-    output_gem_graphics_path) {
+  site_,
+  pheno_df_,
+  h2_outlier_path,
+  selected_traits_,
+  excluded_pseudo_trait_for_save_,
+  vect_alpha_mean_y = 0.01,
+  output_gem_graphics_path
+) {
   # get environments for which h2 are inliers, for phenotypic means,
   # and create vector of variables to keep
   inlier_env_ <- as.data.frame(fread(paste0(
@@ -3766,12 +3904,13 @@ create_mean_pheno_graphic_per_manage_and_site_gh <- function(
 
 # function which estimates variance compnent contributions
 estimate_var_comp_contrib_per_trait <- function(
-    pheno_df_,
-    inlier_env_,
-    var_comp_names_,
-    vect_traits,
-    display_trait_iter_ = T,
-    refit_lmer_ = F) {
+  pheno_df_,
+  inlier_env_,
+  var_comp_names_,
+  vect_traits,
+  display_trait_iter_ = T,
+  refit_lmer_ = F
+) {
   # add residual if missing
   if (!("Residual" %in% var_comp_names_)) {
     var_comp_names_ <- c(var_comp_names_, "Residual")
@@ -3980,11 +4119,12 @@ compute_wilcox <- function(data, trait, group1, group2) {
 
 # function which computes pheno means per management type in refpop
 create_mean_pheno_graphic_per_manage <- function(
-    pheno_df_,
-    h2_outlier_path,
-    selected_traits_,
-    excluded_pseudo_trait_for_save_,
-    output_gem_graphics_path) {
+  pheno_df_,
+  h2_outlier_path,
+  selected_traits_,
+  excluded_pseudo_trait_for_save_,
+  output_gem_graphics_path
+) {
   # get environments for which h2 are inliers, for phenotypic means,
   # and create vector of variables to keep
   inlier_env_ <- as.data.frame(fread(paste0(
@@ -4097,11 +4237,12 @@ create_mean_pheno_graphic_per_manage <- function(
 
 # function which computes pheno means per country in refpop
 create_mean_pheno_graphic_per_country <- function(
-    pheno_df_,
-    h2_outlier_path,
-    selected_traits_,
-    excluded_pseudo_trait_for_save_,
-    output_gem_graphics_path) {
+  pheno_df_,
+  h2_outlier_path,
+  selected_traits_,
+  excluded_pseudo_trait_for_save_,
+  output_gem_graphics_path
+) {
   # get environments for which h2 are inliers, for phenotypic means,
   # and create vector of variables to keep
   inlier_env_ <- as.data.frame(fread(paste0(
@@ -4212,11 +4353,12 @@ create_mean_pheno_graphic_per_country <- function(
 
 # function which computes pheno means per year in refpop
 create_mean_pheno_graphic_per_year <- function(
-    pheno_df_,
-    h2_outlier_path,
-    selected_traits_,
-    excluded_pseudo_trait_for_save_,
-    output_gem_graphics_path) {
+  pheno_df_,
+  h2_outlier_path,
+  selected_traits_,
+  excluded_pseudo_trait_for_save_,
+  output_gem_graphics_path
+) {
   # get environments for which h2 are inliers, for phenotypic means,
   # and create vector of variables to keep
   inlier_env_ <- as.data.frame(fread(paste0(
@@ -4901,18 +5043,19 @@ qqman_manhattan_plot_ <- function(df_, main_, ylim_ = c(0, 10),
 # input a data frame with snp name, chromosome number, bp and scores (i.e.
 # can be normalized variable importance, -log10(p-values), etc.)
 manhattan_ggplot_plotly_ <- function(
-    df_,
-    trait_,
-    qgpd_threshold = quant_qgpd_tresh_,
-    x_lab_ = "SNP index",
-    y_lab_ = "Normalized variable importance",
-    title_ = "",
-    title_size_ = 16,
-    axis_title_size_ = 14,
-    output_path_ = NULL,
-    file_name_ = NULL,
-    make_ggplotly_ = F,
-    max_y = 1) {
+  df_,
+  trait_,
+  qgpd_threshold = quant_qgpd_tresh_,
+  x_lab_ = "SNP index",
+  y_lab_ = "Normalized variable importance",
+  title_ = "",
+  title_size_ = 16,
+  axis_title_size_ = 14,
+  output_path_ = NULL,
+  file_name_ = NULL,
+  make_ggplotly_ = F,
+  max_y = 1
+) {
   # convert chr to factor and add snp index column
   df_$chr <- as.factor(df_$chr)
   df_$index <- 1:nrow(df_)
@@ -5936,11 +6079,12 @@ reduce_dataset_based_on_genotypes <- function(df_, nrow_approx_lim = 10e3,
 
 # function which reduce dataset based on selected whitening method
 reduce_dataset_based_on_selected_whitening <- function(
-    whitening_method,
-    raw_pheno_df,
-    nrow_approx_lim_raw_dataset_zca_cor,
-    nrow_approx_lim_raw_dataset_pca_cor,
-    nrow_approx_lim_raw_dataset_chol) {
+  whitening_method,
+  raw_pheno_df,
+  nrow_approx_lim_raw_dataset_zca_cor,
+  nrow_approx_lim_raw_dataset_pca_cor,
+  nrow_approx_lim_raw_dataset_chol
+) {
   set.seed(123)
   if (whitening_method == "ZCA-cor") {
     raw_pheno_df <- as.data.frame(
@@ -5969,11 +6113,12 @@ reduce_dataset_based_on_selected_whitening <- function(
 
 # function which get raw phenotypes and marker based on common genotypes
 raw_pheno_and_marker_based_on_trait_common_genotypes <- function(
-    raw_pheno_df,
-    omic_df,
-    trait_,
-    fixed_effects_vars,
-    random_effects_vars) {
+  raw_pheno_df,
+  omic_df,
+  trait_,
+  fixed_effects_vars,
+  random_effects_vars
+) {
   # remove all rows with na w.r.t to trait_
   raw_pheno_df[, trait_] <- as.numeric(raw_pheno_df[, trait_])
   raw_pheno_df <- raw_pheno_df %>% drop_na(all_of(trait_))
@@ -6000,11 +6145,12 @@ raw_pheno_and_marker_based_on_trait_common_genotypes <- function(
 
 # function which computes fixed effect vars as factors for those declared as
 compute_fixed_effect_vars_declared_as_factors <- function(
-    raw_pheno_df,
-    fixed_effects_vars,
-    fixed_effects_vars_computed_as_factor,
-    envir_var,
-    fixed_effects_vars_computed_as_factor_by_envir) {
+  raw_pheno_df,
+  fixed_effects_vars,
+  fixed_effects_vars_computed_as_factor,
+  envir_var,
+  fixed_effects_vars_computed_as_factor_by_envir
+) {
   # convert fixed effects variables to factors for those declared
   for (fix_eff_var_ in fixed_effects_vars) {
     if ((length(fixed_effects_vars_computed_as_factor) > 0) &&
@@ -6063,10 +6209,11 @@ compute_gram_matrix <- function(omic_df, kernel_type) {
 # NB. column of ones is added for intercept, and is associated to first
 # fixed effect (which must be factor or numeric) during construction
 compute_incidence_matrices_fixed_and_random_effects <- function(
-    fixed_effects_vars,
-    fixed_effects_vars_computed_as_factor,
-    random_effects_vars,
-    raw_pheno_df) {
+  fixed_effects_vars,
+  fixed_effects_vars_computed_as_factor,
+  random_effects_vars,
+  raw_pheno_df
+) {
   # define list of incidence matrices for fixed effects
   list_x_mat <- vector("list", length(fixed_effects_vars))
   names(list_x_mat) <- fixed_effects_vars
@@ -6389,21 +6536,22 @@ abc_variance_component_estimation <- function(y, x_mat, z_mat, k_mat, beta_hat,
 
 # function which computes transformed fixed variables and least squares
 compute_transformed_vars_and_ols_estimates <- function(
-    omic_df, raw_pheno_df, trait_,
-    fixed_effects_vars,
-    fixed_effects_vars_computed_as_factor,
-    envir_var,
-    fixed_effects_vars_computed_as_factor_by_envir,
-    random_effects_vars,
-    sigma2_u, sigma2_e, kernel_type,
-    whitening_method,
-    regularization_method,
-    alpha_,
-    parallelized_cholesky,
-    reduce_raw_dataset_size_,
-    nrow_approx_lim_raw_dataset_zca_cor,
-    nrow_approx_lim_raw_dataset_pca_cor,
-    nrow_approx_lim_raw_dataset_chol) {
+  omic_df, raw_pheno_df, trait_,
+  fixed_effects_vars,
+  fixed_effects_vars_computed_as_factor,
+  envir_var,
+  fixed_effects_vars_computed_as_factor_by_envir,
+  random_effects_vars,
+  sigma2_u, sigma2_e, kernel_type,
+  whitening_method,
+  regularization_method,
+  alpha_,
+  parallelized_cholesky,
+  reduce_raw_dataset_size_,
+  nrow_approx_lim_raw_dataset_zca_cor,
+  nrow_approx_lim_raw_dataset_pca_cor,
+  nrow_approx_lim_raw_dataset_chol
+) {
   tryCatch(
     {
       # get raw phenotypes and omic data based on common genotypes
@@ -6524,35 +6672,35 @@ compute_transformed_vars_and_ols_estimates <- function(
   )
 }
 
-# function which computes phenotypes approximating genetic values using whitening
-estimate_wiser_phenotype <- function(omic_df, raw_pheno_df, trait_,
-                                     fixed_effects_vars = c(
-                                       "Envir", "Country", "Year",
-                                       "Latitude", "Longitude", "Management"
-                                     ),
-                                     fixed_effects_vars_computed_as_factor = c(
-                                       "Envir", "Country", "Year",
-                                       "Latitude", "Longitude", "Management"
-                                     ),
-                                     envir_var = "Country",
-                                     fixed_effects_vars_computed_as_factor_by_envir = c("Latitude", "Longitude"),
-                                     random_effects_vars = "Genotype",
-                                     init_sigma2_u = 1,
-                                     init_sigma2_e = 1,
-                                     prior_sigma2_lower_bound = 1e-2,
-                                     n_sim_abc = 100,
-                                     seed_abc = 123,
-                                     quantile_threshold_abc = 0.05,
-                                     nb_iter_abc = 1,
-                                     kernel_type = "linear",
-                                     whitening_method = "ZCA-cor",
-                                     regularization_method = "frobenius_norm_regularization",
-                                     alpha_ = 0.01,
-                                     parallelized_cholesky = T,
-                                     reduce_raw_dataset_size_ = T,
-                                     nrow_approx_lim_raw_dataset_zca_cor = 20e3,
-                                     nrow_approx_lim_raw_dataset_pca_cor = 20e3,
-                                     nrow_approx_lim_raw_dataset_chol = 40e3) {
+# function which computes breeding values approximating genetic values using whitening
+estimate_wiser_breeding_value <- function(omic_df, raw_pheno_df, trait_,
+                                          fixed_effects_vars = c(
+                                            "Envir", "Country", "Year",
+                                            "Latitude", "Longitude", "Management"
+                                          ),
+                                          fixed_effects_vars_computed_as_factor = c(
+                                            "Envir", "Country", "Year",
+                                            "Latitude", "Longitude", "Management"
+                                          ),
+                                          envir_var = "Country",
+                                          fixed_effects_vars_computed_as_factor_by_envir = c("Latitude", "Longitude"),
+                                          random_effects_vars = "Genotype",
+                                          init_sigma2_u = 1,
+                                          init_sigma2_e = 1,
+                                          prior_sigma2_lower_bound = 1e-2,
+                                          n_sim_abc = 100,
+                                          seed_abc = 123,
+                                          quantile_threshold_abc = 0.05,
+                                          nb_iter_abc = 1,
+                                          kernel_type = "linear",
+                                          whitening_method = "ZCA-cor",
+                                          regularization_method = "frobenius_norm_regularization",
+                                          alpha_ = 0.01,
+                                          parallelized_cholesky = T,
+                                          reduce_raw_dataset_size_ = T,
+                                          nrow_approx_lim_raw_dataset_zca_cor = 20e3,
+                                          nrow_approx_lim_raw_dataset_pca_cor = 20e3,
+                                          nrow_approx_lim_raw_dataset_chol = 40e3) {
   tryCatch(
     {
       # compute transformed variables associated to fixed effects and least-squares
@@ -6631,12 +6779,12 @@ estimate_wiser_phenotype <- function(omic_df, raw_pheno_df, trait_,
       # extract estimated fixed effects
       beta_hat <- transform_and_ls_obj$beta_hat
 
-      # compute phenotypic values using ols
+      # compute breeding values using ols
       v_hat <- ginv(t(transform_and_ls_obj$z_mat) %*% transform_and_ls_obj$z_mat) %*%
         t(transform_and_ls_obj$z_mat) %*% transform_and_ls_obj$xi_hat
 
       # save wiser fixed effects estimates in a data frame
-      wiser_pheno_df <- data.frame(
+      wiser_bv_df <- data.frame(
         "Genotype" = str_replace_all(
           colnames(transform_and_ls_obj$z_mat),
           pattern = "Genotype_",
@@ -6645,7 +6793,7 @@ estimate_wiser_phenotype <- function(omic_df, raw_pheno_df, trait_,
         "v_hat" = v_hat
       )
 
-      # save wiser phenotypes in a data frame
+      # save wiser breeding values in a data frame
       wiser_fix_eff_df <- data.frame(
         "fixed_effect_var" = colnames(transform_and_ls_obj$x_mat),
         "beta_hat_var" = beta_hat
@@ -6657,7 +6805,7 @@ estimate_wiser_phenotype <- function(omic_df, raw_pheno_df, trait_,
         "w_mat" = transform_and_ls_obj$w_mat,
         "wiser_fixed_effect_estimates" = wiser_fix_eff_df,
         "wiser_abc_variance_component_estimates" = var_comp_abc_obj,
-        "wiser_phenotypes" = wiser_pheno_df,
+        "wiser_breeding_values" = wiser_bv_df,
         "wiser_z_mat" = transform_and_ls_obj$z_mat,
         "wiser_x_mat" = transform_and_ls_obj$x_mat,
         "wiser_x_mat_tilde" = transform_and_ls_obj$x_mat_tilde,
@@ -6688,7 +6836,7 @@ perform_kfold_cv_wiser <- function(omic_df, raw_pheno_df, trait_,
                                    wiser_obj_local) {
   # extract the local wiser object
   omic_df <- wiser_obj_local$wiser_omic_data
-  v_hat <- wiser_obj_local$wiser_phenotypes$v_hat
+  v_hat <- wiser_obj_local$wiser_breeding_values$v_hat
 
   # set seed for reproducibility and get set of indices
   set.seed(123)
@@ -6801,27 +6949,28 @@ perform_kfold_cv_wiser <- function(omic_df, raw_pheno_df, trait_,
 
 # function which finds the optimal whitening method and regularization
 optimize_whitening_and_regularization <- function(
-    omic_df, raw_pheno_df, trait_,
-    fixed_effects_vars = c(
-      "Envir", "Country", "Year",
-      "Row", "Position", "Management"
-    ),
-    fixed_effects_vars_computed_as_factor = c(
-      "Envir", "Country", "Year",
-      "Row", "Position", "Management"
-    ),
-    envir_var = "Country",
-    fixed_effects_vars_computed_as_factor_by_envir = c("Row", "Position"),
-    random_effects_vars = "Genotype",
-    prediction_method = c("rf", "svr", "gblup", "rkhs", "lasso"),
-    whitening_method_grid = c("ZCA-cor", "PCA-cor", "Cholesky"),
-    regularization_method_ = "frobenius_norm_regularization",
-    alpha_grid = c(0.01, 0.1),
-    reduce_raw_dataset_size_ = T,
-    nrow_approx_lim_raw_dataset_ = 5e3,
-    parallelized_cholesky = T,
-    k_folds_ = 5,
-    nb_cores_ = 12) {
+  omic_df, raw_pheno_df, trait_,
+  fixed_effects_vars = c(
+    "Envir", "Country", "Year",
+    "Row", "Position", "Management"
+  ),
+  fixed_effects_vars_computed_as_factor = c(
+    "Envir", "Country", "Year",
+    "Row", "Position", "Management"
+  ),
+  envir_var = "Country",
+  fixed_effects_vars_computed_as_factor_by_envir = c("Row", "Position"),
+  random_effects_vars = "Genotype",
+  prediction_method = c("rf", "svr", "gblup", "rkhs", "lasso"),
+  whitening_method_grid = c("ZCA-cor", "PCA-cor", "Cholesky"),
+  regularization_method_ = "frobenius_norm_regularization",
+  alpha_grid = c(0.01, 0.1),
+  reduce_raw_dataset_size_ = T,
+  nrow_approx_lim_raw_dataset_ = 5e3,
+  parallelized_cholesky = T,
+  k_folds_ = 5,
+  nb_cores_ = 12
+) {
   # remove all rows with na w.r.t to trait_
   raw_pheno_df <- raw_pheno_df %>% drop_na(all_of(trait_))
 
@@ -6864,7 +7013,7 @@ optimize_whitening_and_regularization <- function(
     method <- unique_combinations$whitening_method[j]
     alpha <- unique_combinations$alpha_[j]
 
-    wiser_obj <- estimate_wiser_phenotype(
+    wiser_obj <- estimate_wiser_breeding_value(
       omic_df, raw_pheno_df, trait_,
       fixed_effects_vars,
       fixed_effects_vars_computed_as_factor,
@@ -7014,16 +7163,16 @@ create_scatter_plot_with_linear_fit <- function(df_, trait_, env_) {
     layout(
       title = list(
         text = paste0(
-          trait_, " LS-means versus WISER phenotypes for ",
+          trait_, " LS-means versus WISER breeding values for ",
           env_
         ),
         x = 0.5
       ),
       xaxis = list(
-        title = "Genotype LS-means phenotype"
+        title = "Genotype LS-means breeding value"
       ),
       yaxis = list(
-        title = "Genotype WISER phenotype"
+        title = "Genotype WISER breeding value"
       ),
       annotations = list(
         x = x_annotation,
@@ -7132,4 +7281,71 @@ format_median_iqr <- function(x) {
   med <- round(median(x, na.rm = TRUE), 2)
   iqr_ <- round(IQR(x, na.rm = TRUE), 2)
   return(paste0(med, " (", iqr_, ")"))
+}
+
+
+custom_corrplot_with_scatter_2 <- function(corr_matrix, data, ...) {
+  # base corrplot with ellipses and only the lower triangle
+  corrplot(
+    corr_matrix,
+    method = "ellipse", type = "lower",
+    diag = FALSE, addCoef.col = "black", ...
+  )
+
+  # get the number of variables
+  n <- ncol(corr_matrix)
+
+  # overlay scatter plots in the lower triangle
+  for (i in seq_len(n)) {
+    for (j in seq_len(n)) {
+      if (i > j) { # only lower triangle
+        # get the data for the current cell
+        x_data <- data[[j]]
+        y_data <- data[[i]]
+
+        # normalize data to fit within the cell
+        x_norm <- (x_data - min(x_data)) / (max(x_data) - min(x_data))
+        y_norm <- (y_data - min(y_data)) / (max(y_data) - min(y_data))
+
+        # scale normalized data to the cell size
+        x_scaled <- 0.8 * x_norm + j - 0.4
+        y_scaled <- 0.8 * y_norm + (n - i + 1) - 0.4
+
+        # add scatter points
+        points(x_scaled, y_scaled, pch = 16, col = "palegreen3", cex = 0.5)
+      }
+    }
+  }
+
+  # ---- Add color bar for correlation scale ----
+  # save current plot parameters
+  par(xpd = TRUE)
+
+  # define color gradient (same as corrplot)
+  col_bar <- colorRampPalette(c("blue", "white", "red"))(200)
+
+  # define bar position on the right of the plot
+  x_pos <- n + 1.2
+  y_seq <- seq(-1, 1, length.out = length(col_bar))
+
+  # draw color bar
+  image(
+    x = x_pos, y = y_seq,
+    z = matrix(y_seq, ncol = 1),
+    col = col_bar,
+    add = TRUE
+  )
+
+  # add axis for correlation values
+  axis(
+    side = 4, at = seq(-1, 1, by = 0.5),
+    labels = seq(-1, 1, by = 0.5),
+    las = 1, line = 0.5, cex.axis = 0.8
+  )
+
+  # add label "Correlation"
+  mtext("Correlation", side = 4, line = 2.5, cex = 0.9)
+
+  # restore plotting region
+  par(xpd = FALSE)
 }
