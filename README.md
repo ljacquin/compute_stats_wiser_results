@@ -2,6 +2,8 @@
 
 # compute statistics for WISER publication
 
+[![DOI](https://zenodo.org/badge/919923942.svg)](https://doi.org/10.5281/zenodo.23344326)
+
 ### 🎯 Objective
 
 This repository contains R scripts designed for reproducible data analysis and results, aligned with the FAIR principles. These scripts are used to compute the statistics presented in the WISER publication.
